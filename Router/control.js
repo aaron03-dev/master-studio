@@ -4,12 +4,15 @@ const { startExe, stopExe, deleteExe, getCurrentFolder } = require('../Services/
 const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require("child_process");
 
 let lastFolderName = ''; // Lưu tên thư mục output khi chạy file .exe
+
 
 // 👉 Route để chạy file exe
 router.post('/start', (req, res) => {
     const { folderName } = req.body;
+    console.log("fsdhfjasd")
 
     if (!folderName) {
         return res.status(400).json({ message: 'folderName is required' });
@@ -45,24 +48,80 @@ router.delete('/delete', (req, res) => {
     }
 });
 
-router.get('/download', (req, res) => {
-    const folderName = getCurrentFolder();
-    const folderPath = path.join('D:/', folderName);
-    console.log(folderPath)
+let ftpProcess = null;
 
-    if (!fs.existsSync(folderPath)) {
-        return res.status(404).json({ message: 'Thư mục không tồn tại' });
+async function zipFolderWithoutCompression(sourceFolder, outPath) {
+    return new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(outPath);
+        const archive = archiver("zip", { store: true }); // Không nén, chỉ đóng gói
+
+        output.on("close", () => resolve(outPath));
+        archive.on("error", (err) => reject(err));
+
+        archive.pipe(output);
+        archive.directory(sourceFolder, false);
+        archive.finalize();
+    });
+}
+
+router.post("/start-ftp", async (req, res) => {
+    let folder = req.query.folder;
+    console.log(`📂 Nhận đường dẫn chia sẻ: ${folder}`);
+
+    if (!folder) return res.status(400).json({ error: "Thiếu thư mục chia sẻ" });
+
+    folder = folder.replace(/[:]+$/, ""); // Chuẩn hóa đường dẫn
+    console.log(`📂 Đường dẫn sau khi chuẩn hóa: ${folder}`);
+
+    if (!fs.existsSync(folder) || !fs.lstatSync(folder).isDirectory()) {
+        return res.status(400).json({ error: "Thư mục không tồn tại hoặc không hợp lệ" });
     }
 
-    const zipName = `${folderName}.zip`;
-    res.setHeader('Content-Disposition', `attachment; filename=${zipName}`);
-    res.setHeader('Content-Type', 'application/zip');
+    const zipFileName = `${path.basename(folder)}.zip`;
+    const zipFilePath = path.join(path.dirname(folder), zipFileName);
 
-    const archive = archiver('zip');
-    archive.pipe(res);
-    archive.directory(folderPath, false);
-    archive.finalize();
+    console.log(`📦 Đang đóng gói thư mục vào: ${zipFilePath}`);
+
+    try {
+        await zipFolderWithoutCompression(folder, zipFilePath);
+        console.log(`✅ Đóng gói hoàn tất: ${zipFilePath}`);
+
+        if (ftpProcess && !ftpProcess.killed) {
+            ftpProcess.kill();
+        }
+
+        const ftpScriptPath = "D:/ftp-server.txt";
+        ftpProcess = spawn("python", [ftpScriptPath, zipFilePath]);
+
+        ftpProcess.stdout.on("data", (data) => {
+            console.log(`[FTP] ${data}`);
+        });
+
+        ftpProcess.stderr.on("data", (data) => {
+            console.error(`[FTP Error] ${data}`);
+        });
+
+        res.json({ message: "✅ Đã bật FTP chia sẻ file ZIP: " + zipFilePath });
+    } catch (error) {
+        console.error(`❌ Lỗi khi đóng gói thư mục: ${error.message}`);
+        res.status(500).json({ error: "Không thể đóng gói thư mục" });
+    }
 });
+
+
+
+//function getCurrentResultFolder() {
+//    const folderName = getCurrentFolder();
+//    return {
+//        folderName: folderName,
+//        path: path.join("D:/", folderName)
+//    };
+//}
+
+//router.get('/current-folder', (req, res) => {
+//    const folder = getCurrentResultFolder();
+//    res.json(folder);
+//});
 
 
 module.exports = router;

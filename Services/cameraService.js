@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const cv = require('opencv4nodejs')
+const { spawn } = require('child_process');
 
 const CAMERA_FOLDERS = [
   'D:/AHai',
@@ -66,7 +66,30 @@ function getHomePage(req, res) {
   res.send(html)
 }
 
+
+
+async function startConfigCam() {
+    return new Promise((resolve, reject) => {
+        const exePath = path.join('D:\\config-camxyz', 'ConfigCam.exe');
+
+        const process = spawn(exePath, [], { detached: true, stdio: 'ignore' });
+
+        process.on('error', (err) => {
+            console.error('Lỗi khi chạy exe:', err);
+            reject(err);
+        });
+
+        // Không chờ chạy xong, tách tiến trình rồi resolve luôn
+        process.unref(); // để nó chạy độc lập, không block Node
+
+        console.log('Đã chạy file exe:', exePath);
+        resolve();
+    });
+}
 module.exports = {
   getCameraStream,
-  getHomePage,
+    getHomePage,
+  startConfigCam
 }
+
+

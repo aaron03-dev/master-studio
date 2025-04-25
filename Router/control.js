@@ -12,7 +12,6 @@ let lastFolderName = ''; // Lưu tên thư mục output khi chạy file .exe
 // 👉 Route để chạy file exe
 router.post('/start', (req, res) => {
     const { folderName } = req.body;
-    console.log("fsdhfjasd")
 
     if (!folderName) {
         return res.status(400).json({ message: 'folderName is required' });
@@ -110,18 +109,6 @@ router.post("/start-ftp", async (req, res) => {
 
 
 
-//function getCurrentResultFolder() {
-//    const folderName = getCurrentFolder();
-//    return {
-//        folderName: folderName,
-//        path: path.join("D:/", folderName)
-//    };
-//}
-
-//router.get('/current-folder', (req, res) => {
-//    const folder = getCurrentResultFolder();
-//    res.json(folder);
-//});
 
 
 module.exports = router;

@@ -2,8 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import axios from 'axios'
-import os from 'os'
-import { networkInterfaces } from 'os'
+import { myIp, ipMaster } from '../utils/ipConfig.js'
 
 const exePath = 'D:\\Acquisition.exe'
 
@@ -59,8 +58,8 @@ const getCurrentFolder = () => currentFolderName;
 const notifyMaster = async () => {
    
     try {
-        await axios.post('http://192.168.100.203:3001/slave-status', {
-            slaveIp: 'http://192.168.100.212:3002',
+        await axios.post(`http://${ipMaster}:3001/slave-status`, {
+            slaveIp: `${myIp}`,
             status: 'done',
             folderName: currentFolderName,
         });

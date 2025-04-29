@@ -70,19 +70,27 @@ function getHomePage(req, res) {
 
 async function startConfigCam() {
     return new Promise((resolve, reject) => {
-        const exePath = path.join('D:\\config-camxyz', 'ConfigCam.exe');
+        const exePath = path.join('D:', 'config-camxyz', 'ConfigCam.exe');
 
-        const process = spawn(exePath, [], { detached: true, stdio: 'ignore' });
+        // Kiểm tra file có tồn tại không
+        if (!fs.existsSync(exePath)) {
+            console.error('Không tìm thấy file exe:', exePath);
+            return reject(new Error('File exe không tồn tại'));
+        }
+
+        const process = spawn(exePath, [], {
+            cwd: path.dirname(exePath),
+            detached: true,
+            stdio: 'inherit',
+            shell: true, // thêm shell: true
+        });
 
         process.on('error', (err) => {
             console.error('Lỗi khi chạy exe:', err);
             reject(err);
         });
 
-        // Không chờ chạy xong, tách tiến trình rồi resolve luôn
-        process.unref(); // để nó chạy độc lập, không block Node
-
-        console.log('Đã chạy file exe:', exePath);
+        process.unref(); // cho phép Node chạy tiếp mà không cần chờ exe
         resolve();
     });
 }
